@@ -8,6 +8,7 @@ from video_downloader import VideoDownloader
 from video_processor import VideoProcessor
 from meta_parser import MetaParser
 from config import META_DIR, VIDEO_DIR, OUTPUT_DIR, VIDEO_NUM
+import numpy as np
 
 logging.basicConfig(filename='video_processing.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -28,14 +29,21 @@ def process_single_file(meta_file, meta_dir, video_dir, output_dir, progress_bar
     meta_path = os.path.join(meta_dir, meta_file)
     try:
         meta_info = MetaParser.parse_clip_meta(meta_path)
-        video_file = VideoDownloader.download_video(
-            video_dir, meta_info, progress_bar)
-        total_downloads += 1
-        if video_file:
-            VideoProcessor.crop_video(meta_info, video_file, output_dir)
-            successful_downloads += 1
+        output_exists = VideoDownloader.check_video(
+            output_dir, meta_info)
+        if not output_exists:
+            video_file = VideoDownloader.download_video_max(
+                video_dir, meta_info, progress_bar)
+            total_downloads += 1
+            if video_file:
+                VideoProcessor.crop_video(meta_info, video_file, output_dir)
+                successful_downloads += 1
+            else:
+                failed_downloads += 1
         else:
-            failed_downloads += 1
+            total_downloads += 1
+            successful_downloads += 1
+
     except Exception as e:
         failed_downloads += 1
         logging.error(f"Failed to process {meta_file}: {e}")
@@ -47,11 +55,13 @@ def main():
     ensure_directories_exist()
     start_time = time.time()
 
-    max_workers = min(32, max(4, multiprocessing.cpu_count() - 1))
-
+    max_workers = 3
     meta_files = [f for f in os.listdir(
-        META_DIR) if f.endswith('.txt')][:VIDEO_NUM]
+        META_DIR) if f.endswith('.txt')]#[-VIDEO_NUM:]
+    meta_files = np.random.permutation(meta_files)
+
     total_videos = len(meta_files)
+    print ('WORKERS: ',max_workers)
 
     with tqdm(total=total_videos, unit='file') as progress_bar:
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:

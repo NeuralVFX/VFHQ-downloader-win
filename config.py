@@ -4,4 +4,4 @@ META_DIR = "meta_info/"
 VIDEO_DIR = "data/youtube_videos"
 OUTPUT_DIR = "data/outputs/"
 
-VIDEO_NUM = 10
+VIDEO_NUM = 2000
